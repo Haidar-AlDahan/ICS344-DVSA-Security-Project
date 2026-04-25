@@ -34,7 +34,7 @@ Each lesson folder contains:
 | 4 | Insecure Cloud Configuration | ⏳ Pending |
 | 5 | Broken Access Control | ⏳ Pending |
 | 6 | Denial of Service | ⏳ Pending |
-| 7 | Over-Privileged Functions | ⏳ Pending |
+| 7 | Over-Privileged Functions | ✅ Done |
 | 8 | Logic Vulnerabilities | ⏳ Pending |
 | 10 | Unhandled Exceptions | ⏳ Pending |
 
