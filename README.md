@@ -29,14 +29,14 @@ Each lesson folder contains:
 | # | Lesson | Status |
 |---|--------|--------|
 | 2 | Broken Authentication | ✅ Done |
-| 1+9 | Event Injection + Vulnerable Dependencies | ✅ Done |
+| 1 + 9 | Event Injection + Vulnerable Dependencies | ✅ Done |
 | 3 | Sensitive Information Disclosure | ⏳ Pending |
 | 4 | Insecure Cloud Configuration | ⏳ Pending |
 | 5 | Broken Access Control | ⏳ Pending |
 | 6 | Denial of Service | ⏳ Pending |
 | 7 | Over-Privileged Functions | ✅ Done |
 | 8 | Logic Vulnerabilities | ⏳ Pending |
-| 10 | Unhandled Exceptions | ⏳ Pending |
+| 10 | Unhandled Exceptions | ✅ Done |
 
 ---
 
