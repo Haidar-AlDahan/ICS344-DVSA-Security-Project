@@ -31,9 +31,9 @@ Each lesson folder contains:
 | 1 + 9 | Event Injection + Vulnerable Dependencies | ✅ Done |
 | 2 | Broken Authentication | ✅ Done |
 | 3 | Sensitive Information Disclosure | ✅ Done |
-| 4 | Insecure Cloud Configuration | ⏳ Pending |
+| 4 | Insecure Cloud Configuration | ✅ Done|
 | 5 | Broken Access Control | ⏳ Pending |
-| 6 | Denial of Service | ⏳ Pending |
+| 6 | Denial of Service | ✅ Done |
 | 7 | Over-Privileged Functions | ✅ Done |
 | 8 | Logic Vulnerabilities | ✅ Done |
 | 10 | Unhandled Exceptions | ✅ Done |
