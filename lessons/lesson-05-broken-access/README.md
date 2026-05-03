@@ -1,44 +1,91 @@
-# ICS344 DVSA Lesson 5 - Broken Access Control
+# ICS344 DVSA Lesson 5: Broken Access Control
 
-## Overview
+## 1. Goal and Vulnerability Summary
 
-This folder documents Lesson 5, Broken Access Control, in the DVSA serverless application.
+This lesson demonstrates a Broken Access Control vulnerability in the DVSA order workflow. A normal user should only be able to create an order, add shipping details, and submit billing through the normal checkout path. Administrative order updates should be reachable only through trusted admin logic.
 
-The vulnerable behavior allowed a normal user request sent to the public `/order` API to trigger administrative order-update behavior. The exploit used the event-injection behavior in `DVSA-ORDER-MANAGER` to invoke the privileged Lambda function `DVSA-ADMIN-UPDATE-ORDERS` and request an order status update.
+In the vulnerable DVSA design, a normal user can send a crafted request to the public `/order` API. Because the order handler is vulnerable to event/code injection, the request can make the backend invoke the privileged Lambda function `DVSA-ADMIN-UPDATE-ORDERS` and update an order as if an admin action occurred.
 
-## Vulnerability
-
-The intended rule is:
+Tested API endpoint:
 
 ```text
-Only admin users should be able to perform administrative order updates.
+https://82x6xdx4va.execute-api.us-east-1.amazonaws.com/dvsa/order
 ```
 
-In the vulnerable version, `DVSA-ADMIN-UPDATE-ORDERS` decoded the Cognito token and extracted the username, but it did not verify that the user was an administrator before reading:
+Example target order:
 
-```python
-action = event["body"]["action"]
-orderId = event["body"]["order-id"]
-item = event["body"]["item"]
+```text
+Order ID: ca6fc6bd-c57d-48a8-a76d-db18a5adb8c4
+Confirmation token: 0uCXT5aBi9X1
+Total: $40
 ```
 
-As a result, a normal authenticated user could indirectly reach admin-only behavior and update an order status.
+![Orders page showing target order](assets/screenshot-02.png)
 
-## Exploit Summary
+## 2. Why This Works / Root Cause
 
-The exploit path was:
+The vulnerability is a function-level authorization failure. `DVSA-ADMIN-UPDATE-ORDERS` receives an order ID and an item object, then applies administrative updates without first proving that the caller is an administrator.
+
+Authentication only proves who the user is. Authorization must also prove what the user is allowed to do. In this lesson, a normal authenticated user could reach admin-only order update behavior and change an order status through the public `/order` path.
+
+Exploit path:
 
 ```text
 Normal user token
 -> POST /dvsa/order
--> injected node-serialize function executes in DVSA-ORDER-MANAGER
--> backend invokes DVSA-ADMIN-UPDATE-ORDERS
--> order update is attempted
+-> injected payload executes in DVSA-ORDER-MANAGER
+-> DVSA-ORDER-MANAGER invokes DVSA-ADMIN-UPDATE-ORDERS
+-> admin order update is attempted
 ```
 
-The PowerShell script in this folder demonstrates the payload format used in the lab. It uses placeholders for the access token so no credential is committed.
+## 3. Environment and Setup
 
-## Fix Strategy
+The API URL was collected from API Gateway by opening the deployed `dvsa` stage and copying the Invoke URL.
+
+![API Gateway resource path](assets/screenshot-01.png)
+
+![API Gateway stage invoke URL](assets/screenshot-10.png)
+
+The Cognito access token was captured from browser DevTools under:
+
+```text
+Application -> Local Storage -> DVSA website URL
+```
+
+The token value is not stored in this repository.
+
+![Browser Local Storage accessToken](assets/screenshot-03.png)
+
+## 4. Reproduction Steps
+
+The exploit was executed from Windows PowerShell. The real access token is replaced with `<ACCESS_TOKEN_REDACTED>`.
+
+```powershell
+$API = "https://82x6xdx4va.execute-api.us-east-1.amazonaws.com/dvsa/order"
+$TOKEN = "<ACCESS_TOKEN_REDACTED>"
+$USER_ID = "c4a89468-0021-7047-e09e-deeb55a3781b"
+$ORDER_ID = "ca6fc6bd-c57d-48a8-a76d-db18a5adb8c4"
+$CONFIRMATION_TOKEN = "0uCXT5aBi9X1"
+$NEW_STATUS = 120
+```
+
+The payload creates an event for `DVSA-ADMIN-UPDATE-ORDERS` and sends it through the public `/order` endpoint using the `node-serialize` function marker.
+
+![PowerShell exploit variables](assets/screenshot-11.png)
+
+![PowerShell exploit payload](assets/screenshot-08.png)
+
+## 5. Evidence and Proof
+
+Before the exploit, the order appeared in the normal Orders page. After the payload was sent, the order status could be changed through the administrative update path even though the request came from a normal user flow.
+
+![Orders before exploit](assets/screenshot-06.png)
+
+![Orders after exploit](assets/screenshot-07.png)
+
+This proves the access-control issue: a normal user request was able to reach admin-only order update behavior.
+
+## 6. Fix Strategy / Probable Mitigation
 
 The Lesson 5 fix is applied inside:
 
@@ -46,9 +93,25 @@ The Lesson 5 fix is applied inside:
 DVSA-ADMIN-UPDATE-ORDERS / admin_update_orders.py
 ```
 
-The fix adds an authorization check immediately after the token is decoded and the username is extracted. Normal users are rejected before the function reads `action`, `order-id`, or `item`.
+The admin update function must not trust that only administrators can reach it. Before processing `add`, `update`, or `delete`, it must check that the decoded token belongs to an admin user.
+
+This fix is intentionally scoped to Lesson 5:
+
+```text
+Lesson 1 covers event injection.
+Lesson 7 covers over-privileged IAM roles.
+Lesson 9 covers vulnerable dependencies.
+Lesson 5 focuses on admin authorization.
+```
+
+## 7. Code / Config Changes
+
+The check was inserted inside `lambda_handler` immediately after the token is decoded and the username is extracted:
 
 ```python
+token = json.loads(auth_data)
+user = token["username"]
+
 if token.get("custom:is_admin") != "true":
     return {
         "status": "err",
@@ -57,34 +120,74 @@ if token.get("custom:is_admin") != "true":
     }
 ```
 
-This fix is intentionally scoped to Lesson 5. Event injection is covered in Lesson 1, vulnerable dependencies are covered in Lesson 9, and IAM least privilege is covered in Lesson 7.
+This placement is important because normal users are rejected before the function reads:
 
-## Verification
+```python
+action = event["body"]["action"]
+orderId = event["body"]["order-id"]
+item = event["body"]["item"]
+```
 
-After deploying the fix, the same PowerShell payload was repeated using a normal user token.
+![Code fix in admin_update_orders.py](assets/screenshot-04.png)
 
-Observed result:
+The fixed file is included here:
+
+```text
+admin_update_orders_fixed.py
+```
+
+## 8. Verification After Fix
+
+After deploying the fix, the same Lesson 5 payload was repeated with a normal user access token.
+
+Verification target:
+
+```text
+Order ID: 8fa949be-f1e5-4078-bf4f-d428f388a679
+Initial status: delivered
+Total: $33
+Confirmation token: ZJCwr500MT0B
+```
+
+Before the verification attempt, the order was still visible as `delivered`.
+
+![Orders before verification](assets/screenshot-02.png)
+
+The exploit was then sent again. The API returned:
 
 ```json
 {"status":"err","msg":"unknown action"}
 ```
 
-The order list was checked before and after the attempt, and the target order status remained unchanged. This confirmed that the Lesson 5 exploit path no longer updated the order.
+![Verification error response](assets/screenshot-09.png)
+
+After the verification attempt, the order still showed the same status. No order status was changed by the attack.
+
+![Orders after verification](assets/screenshot-05.png)
+
+This confirms that the exploit path no longer updates the order.
+
+## 9. Structured Operation and Security Analysis
+
+| Field | Summary |
+|---|---|
+| Vulnerability | Broken Access Control |
+| Intended rule | Only verified admin users may perform administrative order updates. |
+| Exploit behavior | A normal user request reached admin update behavior through the public `/order` path. |
+| Fix location | `DVSA-ADMIN-UPDATE-ORDERS / admin_update_orders.py` |
+| Fix | Add `custom:is_admin` authorization check before reading or applying the admin action. |
+| Verification | Re-running the payload did not change the order status. |
+
+## 10. Takeaway / Lessons Learned
+
+Administrative functions must enforce authorization even if they are not directly exposed in the user interface. A hidden Lambda function is still part of the attack surface if another backend function can reach it.
+
+The key lesson is that authentication is not enough. A real user token proves identity, but the backend must still verify whether that user is allowed to perform the requested administrative action.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `admin_update_orders_fixed.py` | Fixed Lambda code with the admin authorization check. |
-| `lesson5_exploit.ps1` | PowerShell exploit/verification payload with placeholders. |
-| `lesson5_fix_summary.json` | Structured summary of the fix and verification result. |
-
-## Screenshot Checklist
-
-Add screenshots for:
-
-1. Orders before the verification attempt.
-2. The PowerShell exploit payload being rerun.
-3. The error response after the fix.
-4. Orders after the verification attempt showing the status did not change.
-5. The code fix in `admin_update_orders.py`.
+| `README.md` | Lesson 5 explanation with screenshots. |
+| `admin_update_orders_fixed.py` | Fixed Lambda function code. |
+| `lesson5_exploit.ps1` | PowerShell exploit/verification script with a token placeholder. |
