@@ -6,7 +6,6 @@ const jose = require('node-jose');
 
 
 exports.handler = (event, context, callback) => {
-    // console.log(JSON.stringify(event));
     var req = serialize.unserialize(event.body); 
     var headers = serialize.unserialize(event.headers);
     var auth_header = headers.Authorization || headers.authorization;
