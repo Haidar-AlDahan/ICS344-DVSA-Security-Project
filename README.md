@@ -32,7 +32,7 @@ Each lesson folder contains:
 | 2 | Broken Authentication | ✅ Done |
 | 3 | Sensitive Information Disclosure | ✅ Done |
 | 4 | Insecure Cloud Configuration | ✅ Done|
-| 5 | Broken Access Control | ⏳ Pending |
+| 5 | Broken Access Control | ✅ Done |
 | 6 | Denial of Service | ✅ Done |
 | 7 | Over-Privileged Functions | ✅ Done |
 | 8 | Logic Vulnerabilities | ✅ Done |
@@ -46,7 +46,8 @@ Each lesson folder contains:
 |---|--------|--------|
 | 1 | Billing Response Parsing Error | ✅ Done |
 | 2 | SQL Injection | ✅ Done |
-
+| 1 | User Enumeration via Cognito Error Messages | ✅ Done |
+| 2 | Negative Quantity Injection — Price Manipulation | ✅ Done |
 
 ---
 
