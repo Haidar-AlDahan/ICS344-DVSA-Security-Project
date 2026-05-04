@@ -46,8 +46,8 @@ Each lesson folder contains:
 |---|--------|--------|
 | 1 | Billing Response Parsing Error | ✅ Done |
 | 2 | SQL Injection | ✅ Done |
-| 1 | User Enumeration via Cognito Error Messages | ✅ Done |
-| 2 | Negative Quantity Injection — Price Manipulation | ✅ Done |
+| 3 | User Enumeration via Cognito Error Messages | ✅ Done |
+| 4 | Negative Quantity Injection — Price Manipulation | ✅ Done |
 
 ---
 
