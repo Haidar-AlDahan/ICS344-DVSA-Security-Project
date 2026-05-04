@@ -3,7 +3,6 @@
 ## Project Info
 - **Course:** ICS-344 Information Security — Term 252
 - **University:** King Fahd University of Petroleum and Minerals (KFUPM)
-- **DVSA Website:** [redacted for submission]
 - **AWS Region:** us-east-1
 
 ---
